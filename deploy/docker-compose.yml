@@ -1,0 +1,135 @@
+version: '3.8'
+
+services:
+  # ============================================================================
+  # TRAEFIK (Reverse Proxy & SSL)
+  # ============================================================================
+  traefik:
+    image: traefik:v2.10
+    container_name: control_room_traefik
+    restart: unless-stopped
+    command:
+      - "--api.insecure=false"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
+      #- "--certificatesresolvers.myresolver.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory" # Comment out for prod
+      - "--certificatesresolvers.myresolver.acme.email=${ACME_EMAIL}"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./traefik_data:/letsencrypt"
+    networks:
+      - control_room_net
+
+  # ============================================================================
+  # DATABASE (PostgreSQL)
+  # ============================================================================
+  db:
+    image: postgres:15-alpine
+    container_name: control_room_db
+    restart: unless-stopped
+    volumes:
+      - control_room_postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    networks:
+      - control_room_net
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================================
+  # CACHE (Redis)
+  # ============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: control_room_redis
+    restart: unless-stopped
+    networks:
+      - control_room_net
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ============================================================================
+  # BACKEND (Django)
+  # ============================================================================
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: control_room_backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env.production
+    environment:
+      - DB_HOST=db
+      - REDIS_HOST=redis
+    labels:
+      - "traefik.enable=true"
+      # API Routing
+      - "traefik.http.routers.backend.rule=Host(`${DOMAIN}`) && PathPrefix(`/api`, `/ws`, `/admin`, `/static`)"
+      - "traefik.http.routers.backend.entrypoints=websecure"
+      - "traefik.http.routers.backend.tls.certresolver=myresolver"
+      # Redirect HTTP to HTTPS
+      - "traefik.http.routers.backend-http.rule=Host(`${DOMAIN}`) && PathPrefix(`/api`, `/ws`, `/admin`, `/static`)"
+      - "traefik.http.routers.backend-http.entrypoints=web"
+      - "traefik.http.middlewares.https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.backend-http.middlewares=https-redirect"
+    networks:
+      - control_room_net
+    volumes:
+      - control_room_static_volume:/app/staticfiles
+      - control_room_media_volume:/app/media
+
+  # ============================================================================
+  # FRONTEND (Next.js)
+  # ============================================================================
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: control_room_frontend
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    labels:
+      - "traefik.enable=true"
+      # Frontend Routing (Catch all except backend paths)
+      - "traefik.http.routers.frontend.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.frontend.entrypoints=websecure"
+      - "traefik.http.routers.frontend.tls.certresolver=myresolver"
+      # Redirect HTTP to HTTPS
+      - "traefik.http.routers.frontend-http.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.frontend-http.entrypoints=web"
+      - "traefik.http.routers.frontend-http.middlewares=https-redirect"
+    networks:
+      - control_room_net
+
+volumes:
+  control_room_postgres_data:
+  control_room_static_volume:
+  control_room_media_volume:
+
+
+networks:
+  control_room_net:
+    driver: bridge
