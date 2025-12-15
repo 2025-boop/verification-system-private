@@ -45,6 +45,8 @@ fi
 
 # 3. Create Data Directories
 mkdir -p traefik_data
+touch traefik_data/acme.json
+chmod 600 traefik_data/acme.json
 
 # 4. Build and Start
 echo -e "${BLUE}>>> Building and Starting Services...${NC}"
