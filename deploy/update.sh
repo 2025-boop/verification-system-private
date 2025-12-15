@@ -9,11 +9,11 @@ git pull
 
 # 2. Rebuild
 echo ">>> Rebuilding containers..."
-docker-compose --file docker-compose.yml build
+docker compose --file docker-compose.yml build
 
-# 3. Restart
+# 3. Restart services
 echo ">>> Restarting services..."
-docker-compose --file docker-compose.yml up -d --remove-orphans
+docker compose --file docker-compose.yml up -d --remove-orphans
 
 # 4. Prune unused images
 docker image prune -f

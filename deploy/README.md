@@ -15,13 +15,13 @@ This directory contains everything you need to deploy the Control Room stack to 
     ```
     *   `DOMAIN`: Your public domain (e.g., `controlroom.example.com`).
     *   `ACME_EMAIL`: Email for Let's Encrypt SSL notifications.
-4.  **Restart**: Run `bash install.sh` again or `docker-compose up -d` to apply changes.
+4.  **Restart**: Run `bash install.sh` again or `docker compose up -d` to apply changes.
 
 ## 🛠 Maintenance
 
 *   **Update Code**: `bash update.sh` (Pulls git changes, rebuilds containers, restarts).
-*   **View Logs**: `docker-compose logs -f`
-*   **Stop App**: `docker-compose down`
+*   **View Logs**: `docker compose logs -f`
+*   **Stop App**: `docker compose down`
 
 ## 💻 Local Testing (Staging)
 

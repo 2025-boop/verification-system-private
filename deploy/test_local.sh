@@ -70,7 +70,7 @@ EOF
 
 
 # 3. Build and Run
-docker-compose -f docker-compose.yml -f docker-compose.local-test.yml --env-file .env.local_test up --build -d
+docker compose -f docker-compose.yml -f docker-compose.local-test.yml --env-file .env.local_test up --build -d
 
 echo -e "${GREEN}>>> Staging Environment Running!${NC}"
 echo "------------------------------------------------"
