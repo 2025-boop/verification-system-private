@@ -116,7 +116,6 @@ services:
       - "traefik.http.routers.frontend-api.rule=Host(`${DOMAIN}`) && PathPrefix(`/api/auth`, `/api/proxy`)"
       - "traefik.http.routers.frontend-api.entrypoints=websecure"
       - "traefik.http.routers.frontend-api.tls.certresolver=myresolver"
-      - "traefik.http.routers.frontend-api.service=frontend"
       - "traefik.http.routers.frontend-api.priority=100"
 
       # 2. Standard Web Routes (Catch-all) - Priority 1
