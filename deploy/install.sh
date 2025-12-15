@@ -39,8 +39,16 @@ if [ ! -f .env.production ]; then
     sed -i "s|postgres_password_placeholder|$DB_PASS|g" .env.production
     
     echo -e "${GREEN}>>> Generated secure passwords in .env.production${NC}"
-    echo "⚠️  ACTION REQUIRED: Please edit .env.production and set your DOMAIN and ACME_EMAIL!"
-    read -p "Press Enter when you have updated the .env.production file..."
+    echo -e "${GREEN}>>> Generated secure passwords in .env.production${NC}"
+    
+    # Validation Loop
+    while grep -q "example.com" .env.production || grep -q "DOMAIN=$" .env.production; do
+        echo -e "${BLUE}⚠️  CONFIGURATION REQUIRED: You must set your DOMAIN and ACME_EMAIL.${NC}"
+        echo "Opening editor in 3 seconds..."
+        sleep 3
+        nano .env.production
+    done
+    echo -e "${GREEN}>>> Configuration looks valid!${NC}"
 fi
 
 # 3. Create Data Directories

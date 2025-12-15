@@ -2,6 +2,13 @@
 set -e
 cd "$(dirname "$0")"
 
+# Safety Check: Configuration must exist
+if [ ! -f .env.production ]; then
+    echo "❌ ERROR: .env.production missing!"
+    echo "Please run 'bash deploy/install.sh' first to generate configuration."
+    exit 1
+fi
+
 echo ">>> Updating Control Room Stack..."
 
 # 1. Pull Code
