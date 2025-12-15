@@ -46,11 +46,11 @@ docker --version
     ```
     *   `DOMAIN`: Your public domain (e.g., `controlroom.example.com`).
     *   `ACME_EMAIL`: Email for Let's Encrypt SSL notifications.
-4.  **Restart**: Run `bash install.sh` again or `docker compose up -d` to apply changes.
+4.  **Restart**: Run `bash deploy/update.sh` again or `docker compose up -d` to apply changes.
 
 ## 🛠 Maintenance
 
-*   **Update Code**: `bash update.sh` (Pulls git changes, rebuilds containers, restarts).
+*   **Update Code**: `bash deploy/update.sh` (Pulls git changes, rebuilds containers, restarts).
 *   **View Logs**: `docker compose logs -f`
 *   **Stop App**: `docker compose down`
 
@@ -69,5 +69,5 @@ bash test_local.sh
 
 *   `docker-compose.yml`: Main service definition (Traefik, Backend, Frontend, Postgres, Redis).
 *   `.env.production`: Secrets and Config (Auto-generated).
-*   `install.sh`: Setup script.
-*   `update.sh`: Update script.
+*   `deploy/install.sh`: Setup script.
+*   `deploy/update.sh`: Update script.
