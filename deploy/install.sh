@@ -38,8 +38,8 @@ mkdir -p traefik_data
 
 # 4. Build and Start
 echo -e "${BLUE}>>> Building and Starting Services...${NC}"
-docker compose build
-docker compose up -d
+docker compose --env-file .env.production build
+docker compose --env-file .env.production up -d
 
 echo -e "${GREEN}>>> Installation Complete! 🚀${NC}"
 echo "------------------------------------------------"
