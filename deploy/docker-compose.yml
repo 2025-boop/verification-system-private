@@ -83,10 +83,11 @@ services:
       - REDIS_HOST=redis
     labels:
       - "traefik.enable=true"
-      # API Routing
+      # API Routing (Priority 50 - Lower than Frontend API)
       - "traefik.http.routers.backend.rule=Host(`${DOMAIN}`) && PathPrefix(`/api`, `/ws`, `/admin`, `/static`)"
       - "traefik.http.routers.backend.entrypoints=websecure"
       - "traefik.http.routers.backend.tls.certresolver=myresolver"
+      - "traefik.http.routers.backend.priority=50"
       # Redirect HTTP to HTTPS
       - "traefik.http.routers.backend-http.rule=Host(`${DOMAIN}`) && PathPrefix(`/api`, `/ws`, `/admin`, `/static`)"
       - "traefik.http.routers.backend-http.entrypoints=web"
@@ -111,10 +112,18 @@ services:
       - .env.production
     labels:
       - "traefik.enable=true"
-      # Frontend Routing (Catch all except backend paths)
+      # 1. High Priority API Routes (BFF: Auth & Proxy) - Priority 100 wins over Backend
+      - "traefik.http.routers.frontend-api.rule=Host(`${DOMAIN}`) && PathPrefix(`/api/auth`, `/api/proxy`)"
+      - "traefik.http.routers.frontend-api.entrypoints=websecure"
+      - "traefik.http.routers.frontend-api.tls.certresolver=myresolver"
+      - "traefik.http.routers.frontend-api.service=frontend"
+      - "traefik.http.routers.frontend-api.priority=100"
+
+      # 2. Standard Web Routes (Catch-all) - Priority 1
       - "traefik.http.routers.frontend.rule=Host(`${DOMAIN}`)"
       - "traefik.http.routers.frontend.entrypoints=websecure"
       - "traefik.http.routers.frontend.tls.certresolver=myresolver"
+      - "traefik.http.routers.frontend.priority=1"
       # Redirect HTTP to HTTPS
       - "traefik.http.routers.frontend-http.rule=Host(`${DOMAIN}`)"
       - "traefik.http.routers.frontend-http.entrypoints=web"
