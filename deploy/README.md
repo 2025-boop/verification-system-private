@@ -5,11 +5,42 @@ This directory contains everything you need to deploy the Control Room stack to 
 ## 🚀 Quick Start (Production)
 
 1.  **Transfer** this entire `deploy/` directory (or the whole repo) to your server.
+    Install Dependencies
+    ```bash                         
+    sudo dnf update -y && \
+sudo dnf install -y docker && \
+sudo systemctl start docker && \
+sudo systemctl enable docker && \
+sudo usermod -aG docker ec2-user && \
+newgrp docker && \
+docker --version    
+```     
+    
+    # Create plugin directory for all users
+    sudo mkdir -p /usr/local/lib/docker/cli-plugins
+
+    # Download latest Compose  plugin for your architecture
+    sudo curl -sL "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-$(uname -m)" \
+    -o /usr/local/lib/docker/cli-plugins/docker-compose
+    
+    # Set permissions
+    sudo chown root:root /usr/local/lib/docker/cli-plugins/docker-compose
+    sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+    
+    # Verify installation
+    docker compose version    
+    
+    ```  
+
 2.  **Run the Installer**:
     ```bash
     bash install.sh
     ```
-3.  **Configure**: The script will generate `.env.production`. Open it and set your `DOMAIN` and `ACME_EMAIL`:
+3.  **Configure**: The script will generate `.env.production`. 
+    ```bash
+    nano deploy/.env.production
+    ```
+    Open it and set your `DOMAIN` and `ACME_EMAIL`:
     ```bash
     nano .env.production
     ```
