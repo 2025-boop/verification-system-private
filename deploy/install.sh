@@ -16,12 +16,13 @@ if ! command -v docker &> /dev/null; then
 fi
 
 # 1.5 Check/Install Docker Buildx (Required for Compose V2)
-if ! docker buildx version > /dev/null 2>&1; then
-    echo -e "${BLUE}>>> Docker Buildx not found. Installing...${NC}"
-    mkdir -p ~/.docker/cli-plugins
-    curl -SL https://github.com/docker/buildx/releases/download/v0.19.0/buildx-v0.19.0.linux-amd64 -o ~/.docker/cli-plugins/docker-buildx
-    chmod +x ~/.docker/cli-plugins/docker-buildx
-    echo -e "${GREEN}>>> Docker Buildx installed!${NC}"
+# Fix: Check strictly for v0.19 to avoid using old pre-installed versions (like 0.12)
+if ! docker buildx version 2>/dev/null | grep -q "v0.19"; then
+    echo -e "${BLUE}>>> System Buildx outdated. Installing v0.19.0 (Global)...${NC}"
+    mkdir -p /usr/local/lib/docker/cli-plugins
+    curl -SL https://github.com/docker/buildx/releases/download/v0.19.0/buildx-v0.19.0.linux-amd64 -o /usr/local/lib/docker/cli-plugins/docker-buildx
+    chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
+    echo -e "${GREEN}>>> Docker Buildx updated!${NC}"
 fi
 
 # 2. Setup Environment Variables
