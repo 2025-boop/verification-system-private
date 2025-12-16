@@ -81,3 +81,14 @@ CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_origins if origin.stri
 
 csrf_origins = config("CSRF_TRUSTED_ORIGINS", default="").split(",")
 CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in csrf_origins if origin.strip()]
+
+
+# ==============================================================================
+# EMAIL CONFIGURATION (Universal Dynamic Backend)
+# ==============================================================================
+EMAIL_BACKEND = "accounts.backends.DynamicEmailBackend"
+
+# Anymail Configuration
+ANYMAIL = {
+    "IGNORE_UNSUPPORTED_FEATURES": True,
+}

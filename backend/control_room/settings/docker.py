@@ -56,3 +56,13 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://localhost:4000",
 ]
+
+# ==============================================================================
+# EMAIL CONFIGURATION (Universal Dynamic Backend)
+# ==============================================================================
+EMAIL_BACKEND = "accounts.backends.DynamicEmailBackend"
+
+# Anymail Configuration
+ANYMAIL = {
+    "IGNORE_UNSUPPORTED_FEATURES": True,
+}
