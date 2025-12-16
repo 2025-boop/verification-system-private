@@ -92,3 +92,32 @@ EMAIL_BACKEND = "accounts.backends.DynamicEmailBackend"
 ANYMAIL = {
     "IGNORE_UNSUPPORTED_FEATURES": True,
 }
+
+# ==============================================================================
+# CELERY CONFIGURATION
+# ==============================================================================
+# Reuse Redis logic from Channel Layers for Celery Broker
+if REDIS_SSL:
+    CELERY_BROKER_URL = f"rediss://{REDIS_HOST}:{REDIS_PORT}/0"
+    if REDIS_PASSWORD:
+        CELERY_BROKER_URL = f"rediss://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/0"
+    
+    # Celery SSL options
+    cert_reqs = config("REDIS_SSL_CERT_REQS", default="required").lower()
+    import ssl
+    ssl_reqs = ssl.CERT_REQUIRED
+    if cert_reqs == "none":
+        ssl_reqs = ssl.CERT_NONE
+    elif cert_reqs == "optional":
+        ssl_reqs = ssl.CERT_OPTIONAL
+        
+    CELERY_BROKER_USE_SSL = {
+        'ssl_cert_reqs': ssl_reqs
+    }
+    CELERY_REDIS_BACKEND_USE_SSL = CELERY_BROKER_USE_SSL
+else:
+    CELERY_BROKER_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}/0"
+    if REDIS_PASSWORD:
+        CELERY_BROKER_URL = f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/0"
+
+CELERY_RESULT_BACKEND = CELERY_BROKER_URL  # Store results in Redis too
