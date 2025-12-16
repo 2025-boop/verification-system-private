@@ -121,3 +121,7 @@ else:
         CELERY_BROKER_URL = f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/0"
 
 CELERY_RESULT_BACKEND = CELERY_BROKER_URL  # Store results in Redis too
+
+# Use Synchronous Sending for now (Simpler than managing a worker container)
+CELERY_TASK_ALWAYS_EAGER = True
+CELERY_TASK_EAGER_PROPAGATES = True
