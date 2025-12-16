@@ -55,13 +55,23 @@ CORS_ALLOWED_ORIGINS = [
 # Perfect for testing without configuring email provider
 # EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
-EMAIL_BACKEND = "anymail.backends.mailjet.EmailBackend"
+# ==================================================
+# Email Configuration (Universal Dynamic Backend)
+# ==================================================
+# Use our custom backend that switches providers via Database (EmailSettings)
+# No need for ANYMAIL dict here - it's constructed dynamically in accounts.backends
+EMAIL_BACKEND = "accounts.backends.DynamicEmailBackend"
 
+# Universal Anymail Configuration
+# "IGNORE_UNSUPPORTED_FEATURES": True allows us to request features like 'track_clicks' 
+# globally in our code, and if a provider (like Brevo) handles it via dashboard 
+# instead of API, it won't crash.
 ANYMAIL = {
-
-    "MAILJET_API_KEY": "8b5e96e687eac1df269e7443e077cf7c",
-    "MAILJET_SECRET_KEY": "cee92c55d399613e7fff66df9df7abca",
+    "IGNORE_UNSUPPORTED_FEATURES": True,
 }
+
+# Default fallback if DB is empty (optional, good practice)
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@example.com')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='juanitahodkiewicz@hotmail.com')
 
 # Alternatively, use Gmail SMTP for actual testing:

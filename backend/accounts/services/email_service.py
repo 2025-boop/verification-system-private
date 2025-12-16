@@ -258,97 +258,51 @@ class EmailService:
     @staticmethod
     def execute_send(email_log: EmailLog) -> bool:
         """
-        Actually send the email using dynamic configuration from EmailSettings.
+        Actually send the email using the configured system backend.
+        Decoupled from specific backend implementation logic.
         """
-        from accounts.models import EmailSettings
         from django.core.mail import get_connection
 
         try:
-            settings = EmailSettings.get_settings()
             company = email_log.company
             
-            # Determine backend and kwargs based on EmailSettings
-            backend_alias = 'django.core.mail.backends.console.EmailBackend'
-            connection_kwargs = {}
-            
-            provider = settings.email_provider
-            
-            if provider == 'sendgrid':
-                backend_alias = 'anymail.backends.sendgrid.EmailBackend'
-                connection_kwargs = {'api_key': settings.sendgrid_api_key}
-                
-            elif provider == 'mailgun':
-                backend_alias = 'anymail.backends.mailgun.EmailBackend'
-                connection_kwargs = {
-                    'api_key': settings.mailgun_api_key,
-                    'sender_domain': settings.mailgun_sender_domain
-                }
-                
-            elif provider == 'amazon_ses':
-                backend_alias = 'anymail.backends.amazon_ses.EmailBackend'
-                connection_kwargs = {
-                    'access_key': settings.aws_access_key_id,
-                    'secret_key': settings.aws_secret_access_key,
-                    'region': settings.aws_region
-                }
+            # Use the global system backend (DynamicEmailBackend)
+            connection = get_connection()
 
-            elif provider == 'mailjet':
-                backend_alias = 'anymail.backends.mailjet.EmailBackend'
-                connection_kwargs = {
-                    'api_key': settings.mailjet_api_key,
-                    'secret_key': settings.mailjet_secret_key
-                }
-                
-            elif provider == 'smtp':
-                backend_alias = 'django.core.mail.backends.smtp.EmailBackend'
-                connection_kwargs = {
-                    'host': settings.smtp_host,
-                    'port': settings.smtp_port,
-                    'username': settings.smtp_username,
-                    'password': settings.smtp_password,
-                    'use_tls': settings.smtp_use_tls,
-                    'use_ssl': settings.smtp_use_ssl,
-                }
-            
-            # Create connection dynamically
-            connection = get_connection(backend=backend_alias, **connection_kwargs)
-
-            # Determine 'From' address
-            # Priority: Company specific > EmailSettings default > Django settings default
-            from_email = settings.default_from_email
-            from_name = settings.from_name
-            
+            # Determine 'From' address logic here if needed, 
+            # though DynamicEmailBackend also applies defaults.
+            # We'll explicitely set it if the company has one, otherwise let backend handle it.
+            from_email = None
             if company.from_email:
-                from_email = company.from_email
-            if company.from_name:
-                from_name = company.from_name
-                
-            full_from_address = f"{from_name} <{from_email}>"
+                if company.from_name:
+                    from_email = f"{company.from_name} <{company.from_email}>"
+                else:
+                    from_email = company.from_email
 
             # Create EmailMultiAlternatives
             msg = EmailMultiAlternatives(
                 subject=email_log.subject,
                 body=email_log.plain_text_body,
-                from_email=full_from_address,
+                from_email=from_email, # If None, DynamicBackend applies default
                 to=[email_log.to_email],
-                connection=connection  # Use our dynamic connection
+                connection=connection 
             )
 
             # Attach HTML version
             msg.attach_alternative(email_log.html_body, "text/html")
 
-            # Provider-agnostic features (Anymail)
-            # Only apply if using an Anymail backend
-            if 'anymail' in backend_alias:
-                msg.tags = ['verification', email_log.template.template_type]
-                msg.metadata = {
-                    'session_uuid': str(email_log.session.uuid),
-                    'case_id': email_log.session.external_case_id,
-                    'email_log_id': str(email_log.id),
-                    'company': company.slug,
-                }
-                msg.track_opens = True
-                msg.track_clicks = True
+            # Attach Metadata - Safe for Anymail, ignored by others (mostly)
+            # Standard Django backends ignore extra attributes on the msg object.
+            # Anymail backends read them.
+            msg.tags = ['verification', email_log.template.template_type]
+            msg.metadata = {
+                'session_uuid': str(email_log.session.uuid),
+                'case_id': email_log.session.external_case_id,
+                'email_log_id': str(email_log.id),
+                'company': company.slug,
+            }
+            msg.track_opens = True
+            msg.track_clicks = True
 
             # Send
             result = msg.send(fail_silently=False)
@@ -357,7 +311,8 @@ class EmailService:
             email_log.status = 'sent'
             email_log.sent_at = timezone.now()
 
-            # Capture Provider Message ID (Anymail only)
+            # Note: Provider Message ID capture depends on the backend returning it.
+            # Anymail attaches it to msg.anymail_status
             if hasattr(msg, 'anymail_status') and msg.anymail_status:
                 message_id = getattr(msg.anymail_status, 'message_id', None)
                 if message_id:
@@ -369,7 +324,7 @@ class EmailService:
             email_log.save(update_fields=['status', 'sent_at', 'provider_message_id'])
 
             logger.info(
-                f"Email sent successfully: {email_log.id} to {email_log.to_email} via {provider}"
+                f"Email sent successfully: {email_log.id} to {email_log.to_email}"
             )
 
             return True

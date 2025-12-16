@@ -430,17 +430,18 @@ class SystemSettings(models.Model):
 class EmailSettings(models.Model):
     """
     Singleton model for dynamic email provider configuration.
-    Allows admins to switch providers (SendGrid, Mailgun, etc.) and update keys
-    without redeploying code or changing environment variables.
+    Allows admins to switch providers and update keys dynamically.
     """
     PROVIDER_CHOICES = [
+        ('console', 'Console (Local Dev)'),
+        ('smtp', 'Custom SMTP'),
         ('sendgrid', 'Twilio SendGrid'),
         ('mailgun', 'Mailgun'),
         ('amazon_ses', 'Amazon SES'),
         ('mailjet', 'Mailjet'),
         ('postmark', 'Postmark'),
-        ('smtp', 'Custom SMTP'),
-        ('console', 'Console (Local Dev)'),
+        ('brevo', 'Brevo (Sendinblue)'),
+        ('sparkpost', 'SparkPost'),
     ]
 
     # Active Provider
@@ -451,7 +452,7 @@ class EmailSettings(models.Model):
         help_text="Select the active email service provider"
     )
 
-    # Sender Defaults
+    # Global Configuration
     default_from_email = models.EmailField(
         default='noreply@example.com',
         help_text="Default 'From' address (e.g., noreply@yourdomain.com)"
@@ -461,49 +462,57 @@ class EmailSettings(models.Model):
         default='Control Room',
         help_text="Friendly name (e.g., 'Security Team')"
     )
-
-    # SendGrid
-    sendgrid_api_key = models.CharField(
+    webhook_secret = models.CharField(
         max_length=255,
         blank=True,
-        help_text="SG.xxxx..."
+        help_text="Shared secret for webhook basic auth (Brevo, SparkPost, etc.)"
+    )
+
+    # --- Provider Specific Settings ---
+
+    # SendGrid
+    sendgrid_api_key = models.CharField(max_length=255, blank=True)
+    sendgrid_webhook_verification_key = models.CharField(
+        max_length=255, 
+        blank=True,
+        help_text="For signed webhooks"
     )
 
     # Mailgun
-    mailgun_api_key = models.CharField(
-        max_length=255,
-        blank=True
-    )
-    mailgun_sender_domain = models.CharField(
-        max_length=255,
+    mailgun_api_key = models.CharField(max_length=255, blank=True)
+    mailgun_sender_domain = models.CharField(max_length=255, blank=True)
+    mailgun_webhook_signing_key = models.CharField(
+        max_length=255, 
         blank=True,
-        help_text="mg.yourdomain.com"
+        help_text="For signed webhooks"
     )
 
     # Amazon SES
-    aws_access_key_id = models.CharField(
-        max_length=255,
-        blank=True
-    )
-    aws_secret_access_key = models.CharField(
-        max_length=255,
-        blank=True
-    )
-    aws_region = models.CharField(
-        max_length=50,
-        blank=True,
-        default='us-east-1'
-    )
+    aws_access_key_id = models.CharField(max_length=255, blank=True)
+    aws_secret_access_key = models.CharField(max_length=255, blank=True)
+    aws_region = models.CharField(max_length=50, default='us-east-1', blank=True)
 
     # Mailjet
-    mailjet_api_key = models.CharField(
-        max_length=255,
-        blank=True
+    mailjet_api_key = models.CharField(max_length=255, blank=True)
+    mailjet_secret_key = models.CharField(max_length=255, blank=True)
+
+    # Postmark
+    postmark_server_token = models.CharField(
+        max_length=255, 
+        blank=True,
+        help_text="X-Postmark-Server-Token"
     )
-    mailjet_secret_key = models.CharField(
-        max_length=255,
-        blank=True
+    postmark_account_token = models.CharField(max_length=255, blank=True)
+
+    # Brevo (Sendinblue)
+    brevo_api_key = models.CharField(
+        max_length=255, 
+        blank=True,
+        help_text="v3 API Key"
     )
+
+    # SparkPost
+    sparkpost_api_key = models.CharField(max_length=255, blank=True)
 
     # Custom SMTP
     smtp_host = models.CharField(

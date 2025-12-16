@@ -45,7 +45,11 @@ whitenoise==6.11.0
 zope.interface==8.0.1
 
 # Email with provider abstraction
-django-anymail[sendgrid]==10.2
+django-anymail[amazon-ses,mailgun,sendgrid,postmark,sparkpost,mailjet,brevo]>=10.3
+
+boto3>=1.26.0
+cryptography>=3.4
+sparkpost
 jinja2==3.1.4
 
 # Async task queue
