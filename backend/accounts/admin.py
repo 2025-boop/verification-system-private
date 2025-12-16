@@ -6,49 +6,122 @@ from django.urls import reverse
 from django.utils.html import format_html
 from django.http import HttpResponseRedirect
 
+# ==========================
+# INLINES (Consolidation Layer)
+# ==========================
+
+class EmailTemplateInline(admin.TabularInline):
+    """Manage templates directly inside the Company view"""
+    model = EmailTemplate
+    fields = ('name', 'template_type', 'subject', 'is_active', 'is_draft')
+    extra = 0
+    show_change_link = True
+    classes = ('collapse',)
+
+class SessionLogInline(admin.TabularInline):
+    """View session history directly inside the Session view"""
+    model = SessionLog
+    fields = ('created_at', 'log_type', 'message')
+    readonly_fields = ('created_at', 'log_type', 'message')
+    can_delete = False
+    extra = 0
+    max_num = 0
+    classes = ('collapse',)
+
+class EmailLogInline(admin.TabularInline):
+    """View sent emails directly inside the Session view"""
+    model = EmailLog
+    fields = ('sent_at', 'subject', 'status_colored')
+    readonly_fields = ('sent_at', 'subject', 'status_colored')
+    can_delete = False
+    extra = 0
+    max_num = 0
+    classes = ('collapse',)
+
+    def status_colored(self, obj):
+        colors = {
+            'sent': 'green', 'opened': 'green', 'clicked': 'green',
+            'failed': 'red', 'bounced': 'red',
+            'queued': 'orange'
+        }
+        color = colors.get(obj.status, 'black')
+        return format_html('<span style="color: {}; font-weight: bold;">{}</span>', color, obj.get_status_display())
+    status_colored.short_description = 'Status'
+
+
+# ==========================
+# CORE ADMIN REGISTRATION
+# ==========================
+
 @admin.register(Session)
 class SessionAdmin(admin.ModelAdmin):
-    list_display = ('external_case_id', 'agent', 'status', 'stage', 'user_online', 'created_at')
-    search_fields = ('external_case_id', 'agent__username', 'status', 'stage')
+    """
+    Session Cockpit: COMPLETE view of a user's journey.
+    """
+    list_display = ('external_case_id', 'agent', 'status_colored', 'stage', 'user_online', 'created_at')
+    search_fields = ('external_case_id', 'agent__username', 'user_email', 'user_name')
     list_filter = ('status', 'stage', 'user_online', 'created_at')
     ordering = ('-created_at',)
+    
+    inlines = [SessionLogInline, EmailLogInline]
+    
+    fieldsets = (
+        ('Case Management', {
+            'fields': ('external_case_id', 'status', 'stage', 'agent'),
+            'description': 'Core tracking info for the verification session.'
+        }),
+        ('Customer Identity', {
+            'fields': ('user_name', 'user_email', 'user_online'),
+        }),
+        ('Data & Notes', {
+            'fields': ('notes', 'user_data', 'uuid'),
+            'classes': ('collapse',),
+            'description': 'Technical metadata and internal notes.'
+        }),
+    )
 
-@admin.register(SessionLog)
-class SessionLogAdmin(admin.ModelAdmin):
-    list_display = ('session', 'log_type', 'message', 'created_at')
-    search_fields = ('session__external_case_id', 'message', 'log_type')
-    list_filter = ('log_type', 'created_at')
-    ordering = ('-created_at',)
+    def status_colored(self, obj):
+        colors = {
+            'active': 'green', 'completed': 'blue',
+            'failed': 'red', 'terminated': 'red'
+        }
+        color = colors.get(obj.status, 'black')
+        return format_html('<span style="color: {}; font-weight: bold;">{}</span>', color, obj.get_status_display())
+    status_colored.short_description = 'Status'
 
-
-# ==========================
-# EMAIL ADMIN REGISTRATION
-# ==========================
 
 @admin.register(Company)
 class CompanyAdmin(admin.ModelAdmin):
-    """Admin interface for managing companies and their email configuration"""
-
-    list_display = ['name', 'from_email', 'primary_color', 'is_active']
+    """
+    Company Hub: Manage Branding & Templates in one place.
+    """
+    list_display = ['logo_preview', 'name', 'from_email', 'color_preview', 'is_active']
     search_fields = ['name', 'from_email', 'slug']
     list_filter = ['is_active', 'created_at']
     prepopulated_fields = {'slug': ('name',)}
+    
+    inlines = [EmailTemplateInline]
 
     fieldsets = (
         ('Identity', {
             'fields': ('name', 'slug', 'is_active')
         }),
         ('Branding', {
-            'fields': ('logo_url', 'primary_color', 'secondary_color', 'website_url'),
-            'description': 'Colors in hex format (e.g., #0073E6). URLs available in templates.'
+            'fields': (
+                ('logo_url', 'logo_preview'),
+                ('primary_color', 'color_preview'), 
+                'secondary_color', 
+                'website_url'
+            ),
+            'description': 'Configure visuals. Logo preview appears if valid URL is provided.'
         }),
         ('Email Configuration', {
             'fields': ('from_email', 'from_name', 'reply_to_email'),
-            'description': 'from_email & from_name used in all emails from this company'
+            'description': 'Default sender info for this company.'
         }),
-        ('Support', {
+        ('Support Information', {
             'fields': ('support_email', 'support_phone'),
-            'description': 'Contact info available in templates'
+            'description': 'Contact info available in templates.'
         }),
         ('Metadata', {
             'fields': ('created_at', 'updated_at'),
@@ -56,75 +129,118 @@ class CompanyAdmin(admin.ModelAdmin):
         }),
     )
 
-    readonly_fields = ['created_at', 'updated_at']
+    readonly_fields = ['logo_preview', 'color_preview', 'created_at', 'updated_at']
+
+    def logo_preview(self, obj):
+        if obj.logo_url:
+            return format_html('<img src="{}" style="height: 30px; max-width: 100px; object-fit: contain;" />', obj.logo_url)
+        return "-"
+    logo_preview.short_description = "Logo"
+
+    def color_preview(self, obj):
+        if obj.primary_color:
+            return format_html(
+                '<div style="width: 20px; height: 20px; background-color: {}; border: 1px solid #ccc;"></div>', 
+                obj.primary_color
+            )
+        return "-"
+    color_preview.short_description = "Color"
 
 
 @admin.register(EmailTemplate)
 class EmailTemplateAdmin(admin.ModelAdmin):
-    """Admin interface for managing email templates - ultra-flexible, copy-paste HTML"""
-
-    list_display = ['company', 'template_type', 'name', 'is_active', 'is_draft']
-    search_fields = ['company__name', 'name', 'subject', 'template_type']
-    list_filter = ['template_type', 'company', 'is_active', 'is_draft', 'created_at']
+    """
+    Design Studio: Focused editor for email content.
+    """
+    list_display = ['name', 'company', 'template_type', 'is_active', 'is_draft']
+    search_fields = ['company__name', 'name', 'subject']
+    list_filter = ['company', 'template_type', 'is_active', 'is_draft']
+    save_as = True  # Allows "Save as new" for easy cloning
 
     fieldsets = (
-        ('Template Info', {
-            'fields': ('company', 'template_type', 'name', 'description', 'is_active', 'is_draft')
+        ('Publishing', {
+            'fields': (('is_active', 'is_draft'),),
+            'description': 'Control visibility and draft status.'
         }),
-        ('Email Content', {
+        ('Context', {
+            'fields': ('company', 'template_type', 'name', 'description'),
+        }),
+        ('Design Canvas', {
             'fields': ('subject', 'html_body', 'plain_text_body'),
-            'description': (
-                'Full custom HTML & text. Paste from email builders (Mailchimp, Stripo, etc). '
-                'Use {{variables}}: customer_name, case_id, verification_link, stage, company_name, message'
-            ),
+            'description': 'Full custom HTML. Use the variables below.',
             'classes': ('wide',)
         }),
-        ('Metadata', {
-            'fields': ('available_variables', 'created_at', 'updated_at'),
+        ('Reference', {
+            'fields': ('available_variables',),
             'classes': ('collapse',),
+            'description': 'Variables available for this template type.'
         }),
     )
-
-    readonly_fields = ['created_at', 'updated_at']
+    
+    readonly_fields = ['available_variables', 'created_at', 'updated_at']
 
 
 @admin.register(EmailLog)
 class EmailLogAdmin(admin.ModelAdmin):
-    """Admin interface for viewing email history and debugging delivery issues"""
-
-    list_display = ['to_email', 'subject', 'status', 'template_link', 'sent_by_agent', 'sent_at']
-    search_fields = ['to_email', 'subject', 'session__external_case_id', 'company__name']
-    list_filter = ['status', 'company', 'created_at', 'sent_at']
+    """
+    Email Audit Trail.
+    """
+    list_display = ['status_colored', 'to_email', 'subject', 'company', 'sent_at']
+    search_fields = ['to_email', 'subject', 'company__name']
+    list_filter = ['status', 'company', 'sent_at']
 
     fieldsets = (
-        ('Email Information', {
-            'fields': ('session', 'company', 'template', 'to_email', 'subject')
+        ('Delivery Status', {
+            'fields': ('status', 'status_colored_large', 'error_message', 'provider_message_id'),
+        }),
+        ('Overview', {
+            'fields': ('to_email', 'subject', 'sent_at', 'sent_by_agent'),
+        }),
+        ('Context', {
+            'fields': ('session', 'company', 'template'),
         }),
         ('Content', {
             'fields': ('html_body', 'plain_text_body'),
             'classes': ('collapse',),
         }),
-        ('Status & Delivery', {
-            'fields': ('status', 'provider_message_id', 'error_message', 'sent_by_agent')
-        }),
-        ('Template Variables', {
-            'fields': ('template_variables',),
-            'classes': ('collapse',),
-        }),
-        ('Timestamps', {
-            'fields': ('created_at', 'sent_at', 'updated_at'),
+        ('Metadata', {
+            'fields': ('created_at', 'updated_at', 'template_variables'),
             'classes': ('collapse',),
         }),
     )
 
-    readonly_fields = ['created_at', 'sent_at', 'updated_at', 'template_variables']
+    readonly_fields = ['status_colored_large', 'created_at', 'sent_at', 'updated_at', 'template_variables']
 
-    def template_link(self, obj):
-        """Display template type as friendly name"""
-        if obj.template:
-            return obj.template.template_type
-        return '-'
-    template_link.short_description = 'Template Type'
+    def status_colored(self, obj):
+        colors = {
+            'sent': 'green', 'opened': 'green', 'clicked': 'green',
+            'failed': 'red', 'bounced': 'red',
+            'queued': 'orange'
+        }
+        color = colors.get(obj.status, 'black')
+        return format_html('<span style="color: {}; font-weight: bold;">{}</span>', color, obj.get_status_display())
+    status_colored.short_description = 'Status'
+
+    def status_colored_large(self, obj):
+        colors = {
+            'sent': 'green', 'opened': 'green', 'clicked': 'green',
+            'failed': 'red', 'bounced': 'red',
+            'queued': 'orange'
+        }
+        color = colors.get(obj.status, 'black')
+        return format_html('<h2 style="color: {}; margin: 0;">{}</h2>', color, obj.get_status_display())
+    status_colored_large.short_description = 'Status Visual'
+
+
+@admin.register(SessionLog)
+class SessionLogAdmin(admin.ModelAdmin):
+    list_display = ('created_at', 'log_type', 'session_link', 'message')
+    search_fields = ('session__external_case_id', 'message')
+    list_filter = ('log_type', 'created_at')
+    
+    def session_link(self, obj):
+        return obj.session.external_case_id or obj.session.uuid
+    session_link.short_description = "Session"
 
 
 @admin.register(SystemSettings)
@@ -187,17 +303,30 @@ class EmailSettingsAdmin(admin.ModelAdmin):
             'fields': ('email_provider',),
             'description': 'Select which service provider to use for sending emails.'
         }),
-        ('Sender Defaults', {
-            'fields': ('default_from_email', 'from_name'),
-            'description': 'Global defaults used if Company-level settings are missing.'
+        ('Global Configuration', {
+            'fields': ('default_from_email', 'from_name', 'webhook_secret'),
+            'description': 'Global defaults and shared secrets (used by Brevo/SparkPost webhooks).'
+        }),
+        ('Brevo (Sendinblue)', {
+            'fields': ('brevo_api_key',),
+            'classes': ('collapse',),
+            'description': 'Required if provider is Brevo.'
         }),
         ('Twilio SendGrid', {
-            'fields': ('sendgrid_api_key',),
+            'fields': ('sendgrid_api_key', 'sendgrid_webhook_verification_key'),
             'classes': ('collapse',),
             'description': 'Required if provider is SendGrid.'
         }),
         ('Mailgun', {
-            'fields': ('mailgun_api_key', 'mailgun_sender_domain'),
+            'fields': ('mailgun_api_key', 'mailgun_sender_domain', 'mailgun_webhook_signing_key'),
+            'classes': ('collapse',),
+        }),
+        ('Postmark', {
+            'fields': ('postmark_server_token', 'postmark_account_token'),
+            'classes': ('collapse',),
+        }),
+        ('SparkPost', {
+            'fields': ('sparkpost_api_key',),
             'classes': ('collapse',),
         }),
         ('Amazon SES', {
@@ -219,11 +348,17 @@ class EmailSettingsAdmin(admin.ModelAdmin):
 
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
-        # Mask API keys in admin (basic precaution)
-        # Note: This makes them look like passwords but doesn't encrypt them in DB
+        # Mask API keys in admin
         sensitive_fields = [
-            'sendgrid_api_key', 'mailgun_api_key',
-            'aws_secret_access_key', 'mailjet_secret_key', 'smtp_password'
+            'sendgrid_api_key', 'sendgrid_webhook_verification_key',
+            'mailgun_api_key', 'mailgun_webhook_signing_key',
+            'aws_secret_access_key', 
+            'mailjet_secret_key', 
+            'smtp_password',
+            'brevo_api_key',
+            'sparkpost_api_key',
+            'postmark_server_token', 'postmark_account_token',
+            'webhook_secret'
         ]
         from django import forms
         for field in sensitive_fields:
