@@ -103,6 +103,13 @@ docker compose up -d
 ---
 
 ## 🛠 Maintenance
+* **Git Permissions**: Ensure the user has appropriate permissions for `git pull` to avoid issues with pull protection.
+  From inside the repository directory (e.g., `verification-system-private`), run:
+
+  ```bash
+  sudo chown -R ec2-user:ec2-user .
+  ```
+  This command grants `ec2-user` ownership of the repository, allowing Git to write to it.
 
 * **Update Code**: To pull the latest changes, rebuild containers, and restart the app:
 
