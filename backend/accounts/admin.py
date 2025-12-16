@@ -53,6 +53,14 @@ class EmailLogInline(admin.TabularInline):
 # CORE ADMIN REGISTRATION
 # ==========================
 
+# ==========================
+# BRANDING
+# ==========================
+admin.site.site_header = "Control Room Admin"
+admin.site.site_title = "Control Room"
+admin.site.index_title = "Mission Control"
+
+
 @admin.register(Session)
 class SessionAdmin(admin.ModelAdmin):
     """
@@ -183,8 +191,13 @@ class EmailTemplateAdmin(admin.ModelAdmin):
 @admin.register(EmailLog)
 class EmailLogAdmin(admin.ModelAdmin):
     """
-    Email Audit Trail.
+    Email Audit Trail. Hidden from main index to reduce clutter.
+    Accessible via Session Cockpit.
     """
+    # Hide from Admin Index
+    def has_module_permission(self, request):
+        return False
+
     list_display = ['status_colored', 'to_email', 'subject', 'company', 'sent_at']
     search_fields = ['to_email', 'subject', 'company__name']
     list_filter = ['status', 'company', 'sent_at']
@@ -234,6 +247,10 @@ class EmailLogAdmin(admin.ModelAdmin):
 
 @admin.register(SessionLog)
 class SessionLogAdmin(admin.ModelAdmin):
+    # Hide from Admin Index
+    def has_module_permission(self, request):
+        return False
+
     list_display = ('created_at', 'log_type', 'session_link', 'message')
     search_fields = ('session__external_case_id', 'message')
     list_filter = ('log_type', 'created_at')
