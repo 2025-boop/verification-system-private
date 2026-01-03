@@ -73,7 +73,7 @@ class NavigateSessionView(APIView):
         # ============================
         # PERMISSION CHECK
         # ============================
-        if not request.user.is_staff and session.agent != request.user:
+        if not request.user.is_superuser and session.agent != request.user:
             return Response(
                 {'error': 'You are not authorized to manage this session'},
                 status=status.HTTP_403_FORBIDDEN
@@ -246,7 +246,7 @@ class MarkUnsuccessfulView(APIView):
         # ============================
         # PERMISSION CHECK
         # ============================
-        if not request.user.is_staff and session.agent != request.user:
+        if not request.user.is_superuser and session.agent != request.user:
             return Response(
                 {'error': 'You are not authorized to manage this session'},
                 status=status.HTTP_403_FORBIDDEN
@@ -388,7 +388,7 @@ class ForceCompleteView(APIView):
         # ============================
         # PERMISSION CHECK
         # ============================
-        if not request.user.is_staff and session.agent != request.user:
+        if not request.user.is_superuser and session.agent != request.user:
             return Response(
                 {'error': 'You are not authorized to manage this session'},
                 status=status.HTTP_403_FORBIDDEN

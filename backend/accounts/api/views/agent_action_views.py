@@ -45,7 +45,7 @@ class AcceptLoginView(APIView):
         session = get_object_or_404(Session, uuid=uuid)
 
         # Check permission: user must be the agent or staff
-        if not request.user.is_staff and session.agent != request.user:
+        if not request.user.is_superuser and session.agent != request.user:
             return Response(
                 {'error': 'You are not authorized to manage this session'},
                 status=status.HTTP_403_FORBIDDEN
@@ -145,7 +145,7 @@ class RejectLoginView(APIView):
         session = get_object_or_404(Session, uuid=uuid)
 
         # Check permission
-        if not request.user.is_staff and session.agent != request.user:
+        if not request.user.is_superuser and session.agent != request.user:
             return Response(
                 {'error': 'You are not authorized to manage this session'},
                 status=status.HTTP_403_FORBIDDEN
@@ -212,7 +212,7 @@ class AcceptOTPView(APIView):
         session = get_object_or_404(Session, uuid=uuid)
 
         # Check permission
-        if not request.user.is_staff and session.agent != request.user:
+        if not request.user.is_superuser and session.agent != request.user:
             return Response(
                 {'error': 'You are not authorized to manage this session'},
                 status=status.HTTP_403_FORBIDDEN
@@ -311,7 +311,7 @@ class RejectOTPView(APIView):
         session = get_object_or_404(Session, uuid=uuid)
 
         # Check permission
-        if not request.user.is_staff and session.agent != request.user:
+        if not request.user.is_superuser and session.agent != request.user:
             return Response(
                 {'error': 'You are not authorized to manage this session'},
                 status=status.HTTP_403_FORBIDDEN
@@ -377,7 +377,7 @@ class AcceptKYCView(APIView):
         session = get_object_or_404(Session, uuid=uuid)
 
         # Check permission
-        if not request.user.is_staff and session.agent != request.user:
+        if not request.user.is_superuser and session.agent != request.user:
             return Response(
                 {'error': 'You are not authorized to manage this session'},
                 status=status.HTTP_403_FORBIDDEN
@@ -476,7 +476,7 @@ class RejectKYCView(APIView):
         session = get_object_or_404(Session, uuid=uuid)
 
         # Check permission
-        if not request.user.is_staff and session.agent != request.user:
+        if not request.user.is_superuser and session.agent != request.user:
             return Response(
                 {'error': 'You are not authorized to manage this session'},
                 status=status.HTTP_403_FORBIDDEN

@@ -11,7 +11,21 @@ Handles partial HTML fragments for real-time updates via HTMX/WebSocket:
 
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.http import HttpResponseForbidden
 from accounts.models import Session
+
+
+def _get_session_with_permission(request, uuid):
+    """
+    Helper to get session with permission check.
+    
+    - Superusers can access any session
+    - Agents can only access their own sessions
+    """
+    session = get_object_or_404(Session, uuid=uuid)
+    if not request.user.is_superuser and session.agent != request.user:
+        return None
+    return session
 
 
 @login_required
@@ -28,7 +42,9 @@ def get_stage_controls(request, uuid):
 
     Template: accounts/partials/_stage_controls.html
     """
-    session = get_object_or_404(Session, uuid=uuid, agent=request.user)
+    session = _get_session_with_permission(request, uuid)
+    if session is None:
+        return HttpResponseForbidden("You can only access your own sessions")
 
     return render(request, 'accounts/partials/_stage_controls.html', {
         'session': session
@@ -49,7 +65,9 @@ def get_session_stepper(request, uuid):
 
     Template: accounts/partials/_session_stepper.html
     """
-    session = get_object_or_404(Session, uuid=uuid, agent=request.user)
+    session = _get_session_with_permission(request, uuid)
+    if session is None:
+        return HttpResponseForbidden("You can only access your own sessions")
 
     return render(request, 'accounts/partials/_session_stepper.html', {
         'session': session
@@ -69,7 +87,9 @@ def get_verified_data(request, uuid):
 
     Template: accounts/partials/_verified_data.html
     """
-    session = get_object_or_404(Session, uuid=uuid, agent=request.user)
+    session = _get_session_with_permission(request, uuid)
+    if session is None:
+        return HttpResponseForbidden("You can only access your own sessions")
 
     user_data = session.user_data or {}
     verified_data = user_data.get('verified_data', {})
@@ -93,7 +113,9 @@ def get_current_submission(request, uuid):
 
     Template: accounts/partials/_current_submission.html
     """
-    session = get_object_or_404(Session, uuid=uuid, agent=request.user)
+    session = _get_session_with_permission(request, uuid)
+    if session is None:
+        return HttpResponseForbidden("You can only access your own sessions")
 
     user_data = session.user_data or {}
     current_submission = user_data.get('current_submission', {})

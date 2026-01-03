@@ -65,6 +65,13 @@ def send_email(request, session_uuid):
     # Get session
     session = get_object_or_404(Session, uuid=session_uuid)
 
+    # Permission check: only session owner or superuser
+    if not request.user.is_superuser and session.agent != request.user:
+        return Response(
+            {'error': 'You can only send emails for your own sessions'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
     # Validate request
     serializer = SendEmailSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -193,6 +200,13 @@ def email_history(request, session_uuid):
     """
 
     session = get_object_or_404(Session, uuid=session_uuid)
+
+    # Permission check: only session owner or superuser
+    if not request.user.is_superuser and session.agent != request.user:
+        return Response(
+            {'error': 'You can only view email history for your own sessions'},
+            status=status.HTTP_403_FORBIDDEN
+        )
 
     # Get emails for this session
     queryset = EmailLog.objects.filter(session=session).order_by('-created_at')

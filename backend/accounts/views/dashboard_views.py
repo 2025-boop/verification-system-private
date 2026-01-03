@@ -25,17 +25,23 @@ def dashboard(request):
 
     Template: accounts/dashboard.html
     """
-    # Get agent's active sessions
-    active_sessions = Session.objects.filter(
-        agent=request.user,
-        status='active'
-    ).order_by('-updated_at')
-
-    # Get agent's recent sessions (last 10)
-    recent_sessions = Session.objects.filter(
-        agent=request.user,
-        status__in=['completed', 'terminated', 'failed', 'cancelled', 'expired']
-    ).order_by('-updated_at')[:10]
+    # Get active sessions - superusers see all, agents see their own
+    if request.user.is_superuser:
+        active_sessions = Session.objects.filter(
+            status='active'
+        ).order_by('-updated_at')
+        recent_sessions = Session.objects.filter(
+            status__in=['completed', 'terminated', 'failed', 'cancelled', 'expired']
+        ).order_by('-updated_at')[:10]
+    else:
+        active_sessions = Session.objects.filter(
+            agent=request.user,
+            status='active'
+        ).order_by('-updated_at')
+        recent_sessions = Session.objects.filter(
+            agent=request.user,
+            status__in=['completed', 'terminated', 'failed', 'cancelled', 'expired']
+        ).order_by('-updated_at')[:10]
 
     # Generate random ID for quick session creation
     random_id = ''.join(random.choices('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', k=6))
@@ -55,7 +61,10 @@ def sessions_list(request):
 
     Template: accounts/sessions.html
     """
-    active_sessions = Session.objects.filter(status='active').order_by('-updated_at')
+    if request.user.is_superuser:
+        active_sessions = Session.objects.filter(status='active').order_by('-updated_at')
+    else:
+        active_sessions = Session.objects.filter(status='active', agent=request.user).order_by('-updated_at')
 
     return render(request, 'accounts/sessions.html', {
         'active_sessions': active_sessions
@@ -69,9 +78,15 @@ def history(request):
 
     Template: accounts/history.html
     """
-    completed_sessions = Session.objects.filter(
-        status__in=['completed', 'terminated']
-    ).order_by('-updated_at')
+    if request.user.is_superuser:
+        completed_sessions = Session.objects.filter(
+            status__in=['completed', 'terminated']
+        ).order_by('-updated_at')
+    else:
+        completed_sessions = Session.objects.filter(
+            status__in=['completed', 'terminated'],
+            agent=request.user
+        ).order_by('-updated_at')
 
     return render(request, 'accounts/history.html', {
         'completed_sessions': completed_sessions

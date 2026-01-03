@@ -248,7 +248,7 @@ class SessionConsumer(AsyncWebsocketConsumer):
 
         # 1. Agent Access (Authenticated User)
         if user and user.is_authenticated:
-            if user.is_staff or await self.verify_agent_ownership(user, self.uuid):
+            if user.is_superuser or await self.verify_agent_ownership(user, self.uuid):
                 is_authorized = True
         
         # 2. Guest Access (Valid JWT for this specific session)

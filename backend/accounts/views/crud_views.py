@@ -66,7 +66,7 @@ def delete_selected_sessions(request):
             session = Session.objects.get(uuid=uuid)
 
             # Verify permission: agent can only delete their own sessions
-            if session.agent != request.user and not request.user.is_staff:
+            if session.agent != request.user and not request.user.is_superuser:
                 continue
 
             session.delete()

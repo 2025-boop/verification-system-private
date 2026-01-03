@@ -67,7 +67,7 @@ class SessionViewSet(WebSocketBroadcastMixin, viewsets.ModelViewSet):
         Staff users see all sessions, regular users see only theirs.
         """
         user = self.request.user
-        if user.is_staff:
+        if user.is_superuser:
             queryset = Session.objects.all()
         else:
             queryset = Session.objects.filter(agent=user)
@@ -82,7 +82,7 @@ class SessionViewSet(WebSocketBroadcastMixin, viewsets.ModelViewSet):
             queryset = queryset.filter(stage=stage_param)
 
         agent_param = self.request.query_params.get('agent', None)
-        if agent_param and user.is_staff:
+        if agent_param and user.is_superuser:
             queryset = queryset.filter(agent_id=agent_param)
 
         return queryset.order_by('-updated_at')
@@ -100,7 +100,7 @@ class SessionViewSet(WebSocketBroadcastMixin, viewsets.ModelViewSet):
     def check_object_permissions(self, request, obj):
         """Ensure user can only access their own sessions"""
         super().check_object_permissions(request, obj)
-        if not request.user.is_staff and obj.agent != request.user:
+        if not request.user.is_superuser and obj.agent != request.user:
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("You can only access your own sessions")
 
@@ -275,7 +275,7 @@ class SessionViewSet(WebSocketBroadcastMixin, viewsets.ModelViewSet):
         for session in sessions_to_delete:
             try:
                 # Permission check: only staff can delete others' sessions
-                if not user.is_staff and session.agent != user:
+                if not user.is_superuser and session.agent != user:
                     results.append({
                         "uuid": str(session.uuid),
                         "status": "permission_denied",

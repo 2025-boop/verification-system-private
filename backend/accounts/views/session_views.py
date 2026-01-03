@@ -8,6 +8,7 @@ Handles server-rendered HTML views for individual sessions:
 
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.http import HttpResponseForbidden
 from accounts.models import Session
 
 
@@ -29,9 +30,17 @@ def session_detail(request, uuid):
     - Stage changes
     - Status changes
 
+    Permission:
+    - Superusers can view any session
+    - Agents can only view their own sessions
+
     Template: accounts/session_detail.html
     """
-    session = get_object_or_404(Session, uuid=uuid, agent=request.user)
+    session = get_object_or_404(Session, uuid=uuid)
+    
+    # Permission check: superusers can access any, agents only their own
+    if not request.user.is_superuser and session.agent != request.user:
+        return HttpResponseForbidden("You can only access your own sessions")
 
     # Get last 50 log entries for this session
     logs = session.logs.all().order_by('-created_at')[:50]
