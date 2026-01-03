@@ -15,6 +15,7 @@ from django.db import connection
 
 from accounts.services.case_id_service import CaseIDService
 from accounts.models import Session
+from accounts.api.permissions import IsStaffUser
 
 
 class HealthCheckView(APIView):
@@ -171,7 +172,7 @@ class GenerateCaseIDView(APIView):
     - case_id: Newly generated unique case ID
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsStaffUser]
 
     def post(self, request):
         """Generate a new case ID"""
