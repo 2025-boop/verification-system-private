@@ -3,7 +3,7 @@ services:
   # TRAEFIK (Reverse Proxy & SSL)
   # ============================================================================
   traefik:
-    image: traefik:v2.10
+    image: traefik:latest
     container_name: control_room_traefik
     restart: unless-stopped
     command:
@@ -25,7 +25,6 @@ services:
       - "./traefik_data:/letsencrypt"
     networks:
       - control_room_net
-
   # ============================================================================
   # DATABASE (PostgreSQL)
   # ============================================================================
@@ -46,7 +45,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
   # ============================================================================
   # CACHE (Redis)
   # ============================================================================
@@ -61,7 +59,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
-
   # ============================================================================
   # BACKEND (Django)
   # ============================================================================
@@ -83,22 +80,23 @@ services:
       - REDIS_HOST=redis
     labels:
       - "traefik.enable=true"
-      # API Routing (Priority 50 - Lower than Frontend API)
-      - "traefik.http.routers.backend.rule=Host(`${DOMAIN}`) && PathPrefix(`/api`, `/ws`, `/admin`, `/static`)"
+      # Define HTTPS redirect middleware for backend
+      - "traefik.http.middlewares.backend-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.backend-https-redirect.redirectscheme.permanent=true"
+      # API Routing HTTPS (Priority 50)
+      - "traefik.http.routers.backend.rule=Host(`${DOMAIN}`) && (PathPrefix(`/api`) || PathPrefix(`/ws`) || PathPrefix(`/admin`) || PathPrefix(`/static`))"
       - "traefik.http.routers.backend.entrypoints=websecure"
       - "traefik.http.routers.backend.tls.certresolver=myresolver"
       - "traefik.http.routers.backend.priority=50"
-      # Redirect HTTP to HTTPS
-      - "traefik.http.routers.backend-http.rule=Host(`${DOMAIN}`) && PathPrefix(`/api`, `/ws`, `/admin`, `/static`)"
+      # API Routing HTTP (with redirect)
+      - "traefik.http.routers.backend-http.rule=Host(`${DOMAIN}`) && (PathPrefix(`/api`) || PathPrefix(`/ws`) || PathPrefix(`/admin`) || PathPrefix(`/static`))"
       - "traefik.http.routers.backend-http.entrypoints=web"
-      - "traefik.http.middlewares.https-redirect.redirectscheme.scheme=https"
-      - "traefik.http.routers.backend-http.middlewares=https-redirect"
+      - "traefik.http.routers.backend-http.middlewares=backend-https-redirect"
     networks:
       - control_room_net
     volumes:
       - control_room_static_volume:/app/staticfiles
       - control_room_media_volume:/app/media
-
   # ============================================================================
   # FRONTEND (Next.js)
   # ============================================================================
@@ -112,30 +110,29 @@ services:
       - .env.production
     labels:
       - "traefik.enable=true"
-      # 1. High Priority API Routes (BFF: Auth & Proxy) - Priority 100 wins over Backend
-      - "traefik.http.routers.frontend-api.rule=Host(`${DOMAIN}`) && PathPrefix(`/api/auth`, `/api/proxy`)"
+      # Define HTTPS redirect middleware for frontend
+      - "traefik.http.middlewares.frontend-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.frontend-https-redirect.redirectscheme.permanent=true"
+      # 1. High Priority API Routes HTTPS (BFF: Auth & Proxy) - Priority 100
+      - "traefik.http.routers.frontend-api.rule=Host(`${DOMAIN}`) && (PathPrefix(`/api/auth`) || PathPrefix(`/api/proxy`))"
       - "traefik.http.routers.frontend-api.entrypoints=websecure"
       - "traefik.http.routers.frontend-api.tls.certresolver=myresolver"
       - "traefik.http.routers.frontend-api.priority=100"
-
-      # 2. Standard Web Routes (Catch-all) - Priority 1
+      # 2. Standard Web Routes HTTPS (Catch-all) - Priority 1
       - "traefik.http.routers.frontend.rule=Host(`${DOMAIN}`)"
       - "traefik.http.routers.frontend.entrypoints=websecure"
       - "traefik.http.routers.frontend.tls.certresolver=myresolver"
       - "traefik.http.routers.frontend.priority=1"
-      # Redirect HTTP to HTTPS
+      # 3. HTTP Router (with redirect to HTTPS)
       - "traefik.http.routers.frontend-http.rule=Host(`${DOMAIN}`)"
       - "traefik.http.routers.frontend-http.entrypoints=web"
-      - "traefik.http.routers.frontend-http.middlewares=https-redirect"
+      - "traefik.http.routers.frontend-http.middlewares=frontend-https-redirect"
     networks:
       - control_room_net
-
 volumes:
   control_room_postgres_data:
   control_room_static_volume:
   control_room_media_volume:
-
-
 networks:
   control_room_net:
     driver: bridge
