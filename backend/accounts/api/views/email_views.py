@@ -87,16 +87,25 @@ def send_email(request, session_uuid):
             is_active=True
         )
 
-        # Build template variables
-        # Start with provided variables
-        template_variables = serializer.validated_data.get('template_variables', {})
-
-        # Add standard variables
-        template_variables.setdefault('customer_name', serializer.validated_data.get('customer_name', 'Valued Customer'))
-        template_variables.setdefault('case_id', session.external_case_id)
-        template_variables.setdefault('company_name', company.name)
-
-        # Allow agent to override variables if needed
+        # Build template variables - AUTO-POPULATE from Company/Session
+        # Industry standard: Agent only provides customer email/name, rest is automatic
+        customer_name = serializer.validated_data.get('customer_name', 'Valued Customer')
+        
+        template_variables = {
+            # Standard variables - auto-populated
+            'customer_name': customer_name,
+            'case_id': session.external_case_id or '',
+            'verification_link': company.website_url or '',  # Use company's landing page URL
+            'stage': session.stage or '',
+            'company_name': company.name,
+            'message': '',  # Optional, can be overridden
+        }
+        
+        # Allow frontend to pass additional/override variables if needed (backwards compat)
+        frontend_variables = serializer.validated_data.get('template_variables', {})
+        if frontend_variables:
+            template_variables.update(frontend_variables)
+        
         variables_override = serializer.validated_data.get('variables_override', {})
         template_variables.update(variables_override)
 
